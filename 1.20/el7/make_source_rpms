@@ -1,0 +1,49 @@
+#!/usr/bin/python3
+
+import glob
+import json
+import os
+import textwrap
+
+build = json.loads(open('build.json').read())
+
+SOURCE_DIR = os.getcwd() + '/source'
+FEDORA_DIR = os.getcwd() + '/fedora-scm'
+PATCHES_DIR = os.getcwd() + '/patches'
+
+if not os.path.exists(SOURCE_DIR):
+    os.mkdir(SOURCE_DIR)
+
+if not os.path.exists(FEDORA_DIR):
+    os.mkdir(FEDORA_DIR)
+
+for pkg in build:
+    if glob.glob('%s/%s/*.src.rpm' % (SOURCE_DIR, pkg)):
+        continue
+
+    print('Building: %s' % pkg)
+
+    os.chdir(FEDORA_DIR)
+    if not os.path.exists(pkg):
+        os.system('fedpkg clone -a %s' % pkg)
+
+    os.chdir(pkg)
+    os.system('git checkout %s' % build[pkg])
+
+    if os.path.exists('%s/%s.patch' % (PATCHES_DIR, pkg)):
+        print('Patching: %s' % pkg)
+        os.system('git reset --hard')
+        os.system('patch -p1 < %s/%s.patch' % (PATCHES_DIR, pkg))
+
+    # Add RPM scriptlets needed for EPEL7
+    # TODO: yes, it's weird to call a python script from a python script using os.system()...
+    os.system('../../add_epel7_scriptlets %s.spec %s.spec' % (pkg, pkg))
+
+    os.system('fedpkg --release epel7 srpm')
+
+    source_rpm = glob.glob('*.src.rpm')
+
+    if source_rpm:
+        os.mkdir('%s/%s' % (SOURCE_DIR, pkg))
+        os.rename(source_rpm[0], '%s/%s/%s' % (SOURCE_DIR, pkg, source_rpm[0]))
+

@@ -1,0 +1,15 @@
+#!/bin/sh
+
+MATE_DEPS=/var/www/html/mate1.20-deps
+
+sudo mkdir -p ${MATE_DEPS}
+
+cd ${MATE_DEPS}
+
+REQUIRED_PACKAGES="pangox-compat pangox-compat-devel djvulibre-devel djvulibre-libs gajim python-nbxmpp python2-crypto python2-gnupg libtomcrypt libtommath wireless-tools wireless-tools-devel fortune-mod libXNVCtrl libXNVCtrl-devel"
+
+if [ ! -d repodata ]; then
+    sudo yumdownloader ${REQUIRED_PACKAGES}
+    sudo createrepo_c -p .
+fi
+

@@ -1,0 +1,14 @@
+#!/bin/sh
+
+rm -rf binary
+rm -rf source
+rm -rf fedora-scm
+
+sudo rm -rf /var/www/html/mate1.20
+sudo rm -rf /var/www/html/mate1.20-deps
+
+sudo rm -rf /var/cache/mock/mate1.20-7-x86_64
+sudo rm -rf /var/lib/mock/mate1.20-7-x86_64
+
+rm -rf repos
+

@@ -1,0 +1,41 @@
+#!/usr/bin/python3
+
+import glob
+import json
+import os
+
+build = json.loads(open('build.json').read())
+
+SOURCE_DIR = os.getcwd() + '/source'
+BINARY_DIR = os.getcwd() + '/binary'
+
+if not os.path.exists(SOURCE_DIR):
+    os.mkdir(SOURCE_DIR)
+
+if not os.path.exists(BINARY_DIR):
+    os.mkdir(BINARY_DIR)
+
+for pkg in build:
+    if glob.glob('%s/%s' % (BINARY_DIR, pkg)):
+        continue
+
+    print('Building: %s' % pkg)
+
+    source_rpm = glob.glob('%s/%s/*.src.rpm' % (SOURCE_DIR, pkg))
+    if not source_rpm:
+        print('No source RPM available!')
+
+    else:
+        rc = os.system('sudo mock -r mate1.20-7-x86_64 --no-clean --rebuild %s' % source_rpm[0])
+
+        if rc == 0:
+            os.system('sudo rsync -avP /var/lib/mock/mate1.20-7-x86_64/result/*.rpm /var/www/html/mate1.20/.')
+            os.system('sudo createrepo_c -p /var/www/html/mate1.20')
+
+            os.mkdir('%s/%s' % (BINARY_DIR, pkg))
+            os.system('cp -a /var/lib/mock/mate1.20-7-x86_64/result/* %s/%s/.' % (BINARY_DIR, pkg))
+            os.system('sudo rm -f /var/lib/mock/mate1.20-7-x86_64/result/*')
+
+        else:
+            print('Build failure!')
+

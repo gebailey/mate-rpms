@@ -1,0 +1,27 @@
+#!/bin/sh
+
+REQUIRED_PACKAGES="mock fedpkg createrepo_c"
+
+for package in ${REQUIRED_PACKAGES}
+do
+    rpm -q --quiet ${package}
+    if [ "$?" != "0" ]; then
+        echo "Installing: ${package}"
+        sudo yum -y install ${package}
+    fi
+done
+
+# Mock configuration
+
+if [ ! -f "/etc/mock/mate1.20-7-x86_64.cfg" ]; then
+    sudo install -m 0644 -o root -g root -p -t /etc/mock mock/mate1.20-7-x86_64.cfg
+fi
+
+# Webserver configuration
+
+sudo mkdir -p /var/www/html/mate1.20
+
+sudo createrepo_c /var/www/html/mate1.20
+
+sudo systemctl start httpd
+

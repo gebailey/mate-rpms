@@ -1,0 +1,160 @@
+#!/usr/bin/python3
+
+"""\
+Fix scriptlets in an RPM spec file for EL7 compatibility.
+
+This script attempts to add RPM configuration to spec files that's required by
+EL7 but not by Fedora.  The intended use case is for RPM spec files imported
+from Fedora that are to be recompiled in an EL7 environment.
+
+The following checks are made:
+    Shared Libraries
+    GSettings Schema
+    mimeinfo
+    desktop-database
+    Icon Cache
+
+See https://fedoraproject.org/wiki/EPEL:Packaging#Scriptlets for more
+information.
+
+Limitations:  This script assumes that the RPM spec file does not already
+contain any %pre, %preun, %post, %postun, or %posttrans scriptlets in it
+already.  Any new scriptlets are added before the %changelog directive.
+"""
+
+import os
+import sys
+import textwrap
+
+if len(sys.argv) < 2:
+    print("Required arguments missing!")
+    sys.exit(1)
+
+in_spec_file = sys.argv[1]
+out_spec_file = sys.argv[2]
+
+if not os.path.exists(in_spec_file):
+    print("Spec file does not exist!")
+    sys.exit(1)
+
+in_spec = open(in_spec_file).read()
+
+# Identify patterns in the %files specifications that indicate a need for an
+# RPM scriptlet to be added, keeping track of which subpackage it occurred in.
+
+subpackage = None
+tripped_rules = {}
+post = {}
+postun = {}
+posttrans = {}
+
+for spec_line in in_spec.split("\n"):
+    if spec_line.startswith("%files"):
+        try:
+            subpackage = spec_line.split(" ")[1]
+            if subpackage == "-f":
+                subpackage = ""
+            elif subpackage == "-n":
+                # Following argument is the full package name
+                subpackage = "-n " + spec_line.split(" ")[2]
+        except IndexError:
+            subpackage = ""
+
+        if subpackage not in tripped_rules:
+            tripped_rules[subpackage] = {}
+            post[subpackage] = ""
+            postun[subpackage] = ""
+            posttrans[subpackage] = ""
+
+    elif spec_line.startswith("%changelog"):
+        subpackage = None
+
+    elif subpackage or subpackage == "":
+
+        # Examine each specified file
+
+        if (
+            spec_line.startswith("%{_libdir}")
+            and ".so." in spec_line
+            and "Shared Libraries" not in tripped_rules[subpackage]
+        ):
+            tripped_rules[subpackage]["Shared Libraries"] = 1
+            print("Detected Shared Libraries in subpackage [%s]" % subpackage)
+
+            post[subpackage] += "/sbin/ldconfig\n"
+            postun[subpackage] += "/sbin/ldconfig\n"
+
+        if "glib-2.0/schemas" in spec_line and "GSettings Schema" not in tripped_rules[subpackage]:
+            tripped_rules[subpackage]["GSettings Schema"] = 1
+            print("Detected GSettings Schema in subpackage [%s]" % subpackage)
+
+            postun[subpackage] += textwrap.dedent(
+                """\
+                if [ $1 -eq 0 ] ; then
+                    /usr/bin/glib-compile-schemas %{_datadir}/glib-2.0/schemas &> /dev/null || :
+                fi
+                """
+            )
+            posttrans[subpackage] += "/usr/bin/glib-compile-schemas %{_datadir}/glib-2.0/schemas &> /dev/null || :\n"
+
+        if spec_line.startswith("%{_datadir}/mime/packages") and "mimeinfo" not in tripped_rules[subpackage]:
+            tripped_rules[subpackage]["mimeinfo"] = 1
+            print("Detected mimeinfo in subpackage [%s]" % subpackage)
+
+            post[subpackage] += "/bin/touch --no-create %{_datadir}/mime/packages &>/dev/null || :\n"
+            postun[subpackage] += textwrap.dedent(
+                """\
+                if [ $1 -eq 0 ] ; then
+                    /usr/bin/update-mime-database %{_datadir}/mime &> /dev/null || :
+                fi
+                """
+            )
+            posttrans[subpackage] += "/usr/bin/update-mime-database %{?fedora:-n} %{_datadir}/mime &> /dev/null || :\n"
+
+        if (
+            spec_line.startswith("%{_datadir}/applications/")
+            and spec_line.endswith(".desktop")
+            and "desktop-database" not in tripped_rules[subpackage]
+        ):
+            tripped_rules[subpackage]["desktop-database"] = 1
+            print("Detected desktop-database in subpackage [%s]" % subpackage)
+
+            post[subpackage] += "/usr/bin/update-desktop-database &> /dev/null || :\n"
+            postun[subpackage] += "/usr/bin/update-desktop-database &> /dev/null || :\n"
+
+        if spec_line.startswith("%{_datadir}/icons/"):
+            print("Detected Icon Cache in subpackage [%s]" % subpackage)
+
+            icons_subdir = spec_line.split("/")[2]
+            if "/icons/%s " % icons_subdir not in post[subpackage]:
+                post[subpackage] += "/bin/touch --no-create %%{_datadir}/icons/%s &>/dev/null || :\n" % icons_subdir
+                postun[subpackage] += textwrap.dedent(
+                    """\
+                    if [ $1 -eq 0 ] ; then
+                        /bin/touch --no-create %%{_datadir}/icons/%s &>/dev/null
+                        /usr/bin/gtk-update-icon-cache %%{_datadir}/icons/%s &>/dev/null || :
+                    fi
+                    """
+                    % (icons_subdir, icons_subdir)
+                )
+                posttrans[subpackage] += (
+                    "/usr/bin/gtk-update-icon-cache %%{_datadir}/icons/%s &>/dev/null || :\n" % icons_subdir
+                )
+
+# Generate the new spec file lines
+added = ""
+
+for scriptlet_name, scriptlet_dict in [("post", post), ("postun", postun), ("posttrans", posttrans)]:
+    for subpackage in scriptlet_dict:
+        if scriptlet_dict[subpackage]:
+            added += "%%%s" % scriptlet_name
+            if subpackage:
+                added += " %s" % subpackage
+            added += "\n"
+            added += scriptlet_dict[subpackage]
+            added += "\n"
+
+# Only replace first occurrence; some specs have references to %changelog in the changelog
+out_spec = in_spec.replace("%changelog", added + "%changelog", 1)
+
+open(out_spec_file, "w").write(out_spec)

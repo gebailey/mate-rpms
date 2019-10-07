@@ -1,0 +1,32 @@
+diff --git a/mate-icon-theme-faenza.spec b/mate-icon-theme-faenza.spec
+index 9d832eb..d46ec9f 100644
+--- a/mate-icon-theme-faenza.spec
++++ b/mate-icon-theme-faenza.spec
+@@ -40,27 +40,6 @@ make %{?_smp_mflags} V=1
+ hardlink -c -v %{buildroot}%{_datadir}/icons
+ 
+ 
+-%post
+-/bin/touch --no-create %{_datadir}/icons/matefaenza &> /dev/null || :
+-/bin/touch --no-create %{_datadir}/icons/matefaenzagray &> /dev/null || :
+-/bin/touch --no-create %{_datadir}/icons/matefaenzadark &> /dev/null || :
+-
+-%postun
+-if [ $1 -eq 0 ] ; then
+-    /bin/touch --no-create %{_datadir}/icons/matefaenza &> /dev/null
+-    /usr/bin/gtk-update-icon-cache -f %{_datadir}/icons/matefaenza &> /dev/null || :
+-    /bin/touch --no-create %{_datadir}/icons//matefaenzadark &> /dev/null
+-    /usr/bin/gtk-update-icon-cache -f %{_datadir}/icons/matefaenzadark &> /dev/null || :
+-    /bin/touch --no-create %{_datadir}/icons//matefaenzagray &> /dev/null
+-    /usr/bin/gtk-update-icon-cache -f %{_datadir}/icons/matefaenzagray &> /dev/null || :
+-fi
+-
+-%posttrans
+-/usr/bin/gtk-update-icon-cache -f %{_datadir}/icons/matefaenza &> /dev/null || :
+-/usr/bin/gtk-update-icon-cache -f %{_datadir}/icons/matefaenzadark &> /dev/null || :
+-/usr/bin/gtk-update-icon-cache -f %{_datadir}/icons/matefaenzagray &> /dev/null || :
+-
+-
+ %files
+ %{_datadir}/icons/matefaenzagray
+ %{_datadir}/icons/matefaenzadark

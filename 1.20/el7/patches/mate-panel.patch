@@ -1,0 +1,26 @@
+diff --git a/mate-panel.spec b/mate-panel.spec
+index 2e4a4aa..813ba3f 100644
+--- a/mate-panel.spec
++++ b/mate-panel.spec
+@@ -40,7 +40,7 @@ Patch2:         mate-panel_0002-struts-Use-inside-edge-panels-only-on-Marco-and-
+ 
+ Requires:       %{name}-libs%{?_isa} = %{version}-%{release}
+ #for fish
+-Recommends:     fortune-mod
++Requires:       fortune-mod
+ # rhbz (#1007219)
+ Requires:       caja-schemas
+ 
+@@ -130,12 +130,6 @@ install -D -m 0644 %{SOURCE3} %{buildroot}%{_datadir}/mate-panel/layouts/rhel.la
+ 
+ %find_lang %{name} --with-gnome --all-name
+ 
+-%if 0%{?rhel} || 0%{?fedora} && 0%{?fedora} <= 28
+-%post libs -p /sbin/ldconfig
+-%postun libs -p /sbin/ldconfig
+-%endif
+-
+-
+ %files -f %{name}.lang
+ %doc AUTHORS COPYING README
+ %{_mandir}/man1/*

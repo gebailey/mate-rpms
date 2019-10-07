@@ -1,0 +1,16 @@
+diff --git a/libmatemixer.spec b/libmatemixer.spec
+index 64437e3..fbeb811 100644
+--- a/libmatemixer.spec
++++ b/libmatemixer.spec
+@@ -82,11 +82,6 @@ find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
+ %find_lang %{name} --with-gnome --all-name
+ 
+ 
+-%post -p /sbin/ldconfig
+-
+-%postun -p /sbin/ldconfig
+-
+-
+ %files -f %{name}.lang
+ %doc AUTHORS COPYING NEWS README
+ %{_libdir}/libmatemixer.so.*

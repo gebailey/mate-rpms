@@ -1,0 +1,15 @@
+diff --git a/libmatekbd.spec b/libmatekbd.spec
+index 122bfe3..6f70286 100644
+--- a/libmatekbd.spec
++++ b/libmatekbd.spec
+@@ -81,10 +81,6 @@ find %{buildroot} -name '*.la' -exec rm -fv {} ';'
+ %find_lang %{name} --with-gnome --all-name
+ 
+ 
+-%post -p /sbin/ldconfig
+-%postun -p /sbin/ldconfig
+-
+-
+ %files -f %{name}.lang
+ %doc AUTHORS COPYING README
+ %{_datadir}/libmatekbd

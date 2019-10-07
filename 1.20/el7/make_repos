@@ -1,0 +1,17 @@
+#!/bin/sh
+
+rm -rf repos
+
+mkdir -p repos/mate1.20
+mkdir -p repos/mate1.20-source
+mkdir -p repos/mate1.20-debuginfo
+
+cp -a binary/*/*.rpm repos/mate1.20/.
+
+mv repos/mate1.20/*src.rpm repos/mate1.20-source/.
+mv repos/mate1.20/*-debuginfo-*.rpm repos/mate1.20-debuginfo/.
+
+createrepo_c repos/mate1.20
+createrepo_c repos/mate1.20-source
+createrepo_c repos/mate1.20-debuginfo
+
